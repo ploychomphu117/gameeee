@@ -1,0 +1,2092 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wind Science Simulator – นักวิทยาศาสตร์ตัวน้อย พิชิตภารกิจการเกิดลม</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Prompt', sans-serif;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Mobile Touch Optimization & Smooth Viewport */
+        html, body {
+            touch-action: manipulation;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Canvas Responsive Container */
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 260px;
+        }
+        @media (min-width: 640px) {
+            .canvas-container {
+                min-height: 320px;
+            }
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 0.75rem;
+        }
+        .glow-effect {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+        /* Custom Touch-Friendly Range Sliders */
+        input[type=range] {
+            height: 28px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- TOP NAVBAR -->
+    <header class="bg-white/90 backdrop-blur border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer" onclick="showScreen('home')">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-lg sm:text-xl shadow-md shrink-0">
+                    <i class="fa-solid fa-wind"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg leading-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-blue-600">
+                        Wind Science Simulator
+                    </h1>
+                    <p class="text-[10px] sm:text-xs text-slate-500">นักวิทยาศาสตร์ตัวน้อย พิชิตภารกิจการเกิดลม (ป.6)</p>
+                </div>
+            </div>
+            <!-- Header Status -->
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <button onclick="toggleAudio()" id="btn-audio-toggle" class="bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs sm:text-sm font-medium transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-volume-high text-cyan-600" id="icon-audio"></i>
+                    <span class="hidden sm:inline" id="text-audio">เปิดเสียง</span>
+                </button>
+                <div class="bg-slate-100 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-star text-amber-500 text-xs sm:text-sm"></i>
+                    <span class="text-xs sm:text-sm font-bold text-amber-600" id="global-score">0 / 20</span>
+                </div>
+                <button onclick="showScreen('level-select')" class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center space-x-1.5 shadow-sm">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span class="hidden sm:inline">เลือกด่าน</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-4 flex flex-col justify-center">
+
+        <!-- 1. HOME SCREEN -->
+        <section id="screen-home" class="screen-view flex flex-col items-center justify-center py-4 sm:py-8 text-center">
+            <div class="max-w-3xl w-full bg-white border border-slate-200 rounded-3xl p-5 sm:p-8 shadow-xl relative overflow-hidden">
+                <div class="absolute -top-20 -left-20 w-40 h-40 bg-cyan-200/50 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-20 -right-20 w-40 h-40 bg-blue-200/50 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl text-white shadow-xl animate-bounce">
+                    <i class="fa-solid fa-wind"></i>
+                </div>
+                <h2 class="text-2xl sm:text-4xl font-extrabold mb-3 sm:mb-4 text-slate-900">
+                    ยินดีต้อนรับสู่นักวิทยาศาสตร์ตัวน้อย!
+                </h2>
+                <p class="text-xs sm:text-base text-slate-600 mb-6 sm:mb-8 leading-relaxed max-w-xl mx-auto">
+                    ร่วมสนุกและเรียนรู้วิทยาศาสตร์ชั้น ป.6 ในการจำลองการทดลองเรื่อง "การเกิดลม" เรียนรู้ปัจจัยเรื่องอุณหภูมิ ความหนาแน่น ความกดอากาศ และการเกิดลมบกลมทะเลผ่านการทดลองเสมือนจริง 5 ภารกิจสุดท้าทาย!
+                </p>
+
+                <div class="flex flex-wrap justify-center gap-4">
+                    <button onclick="showScreen('level-select')" class="w-full sm:w-auto bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg transition transform active:scale-95 text-base sm:text-lg flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-play"></i>
+                        <span>เริ่มภารกิจทดลอง</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. LEVEL SELECT SCREEN -->
+        <section id="screen-level-select" class="screen-view hidden py-4">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">เลือกด่านภารกิจวิทยาศาสตร์</h2>
+                <p class="text-slate-500 text-sm">ปลดล็อกและพิชิตภารกิจเรียงตามลำดับเพื่อรับคะแนนเต็ม</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto" id="levels-container">
+                <!-- Level Cards dynamically injected by JS -->
+            </div>
+        </section>
+
+        <!-- 3. EXPERIMENT LAB SCREEN -->
+        <section id="screen-lab" class="screen-view hidden flex flex-col space-y-4">
+            <!-- Level Progress Header -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 shadow-sm">
+                <div>
+                    <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-cyan-600" id="lab-level-number">ด่านที่ 1</span>
+                    <h3 class="text-lg sm:text-xl font-bold text-slate-900 leading-snug" id="lab-level-title">รู้จักการเกิดลม (What is Wind?)</h3>
+                </div>
+                <div class="flex items-center space-x-2 sm:space-x-3 w-full md:w-auto justify-between md:justify-end">
+                    <button onclick="openKnowledgeModal()" class="flex-1 md:flex-none bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-800 border border-amber-300 text-xs px-3 py-2 sm:px-3.5 sm:py-2 rounded-lg font-bold transition flex items-center justify-center space-x-1.5 shadow-sm">
+                        <i class="fa-solid fa-book-open text-amber-600"></i>
+                        <span>ทบทวนความรู้ก่อนตอบ</span>
+                    </button>
+                    <button onclick="finishExperimentAndStartQuiz()" class="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs px-3.5 py-2 sm:px-4 sm:py-2 rounded-lg font-bold transition flex items-center justify-center space-x-1.5 shadow-md">
+                        <span>ไปทำแบบทดสอบ</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lab Workspace Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-stretch">
+                <!-- Left: Equipment Sidebar -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col space-y-3 shadow-sm">
+                    <h4 class="text-sm font-bold text-slate-700 flex items-center space-x-2">
+                        <i class="fa-solid fa-toolbox text-cyan-600"></i>
+                        <span>แถบอุปกรณ์ทดลอง</span>
+                    </h4>
+                    <p class="text-xs text-slate-500">คลิกเลือกอุปกรณ์เพื่อติดตั้งในฉากทดลอง</p>
+                    <div id="equipment-list" class="space-y-2 flex-grow overflow-y-auto max-h-[220px] lg:max-h-none">
+                        <!-- Equipment items injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- Center: Main Simulation Canvas Scene -->
+                <div class="lg:col-span-2 bg-slate-100 border border-slate-200 rounded-2xl p-2.5 sm:p-3 flex flex-col relative overflow-hidden min-h-[300px] sm:min-h-[360px] shadow-sm">
+                    <div class="flex items-center justify-between mb-2 px-1">
+                        <div class="flex items-center space-x-1.5 text-[11px] sm:text-xs text-slate-500">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                            <span class="truncate">ฉากจำลองการทดลองวิทยาศาสตร์ (2D Simulator)</span>
+                        </div>
+                        <div id="status-badge" class="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700 shrink-0">
+                            สถานะ: พร้อมทดลอง
+                        </div>
+                    </div>
+
+                    <!-- Canvas Box -->
+                    <div class="canvas-container flex-grow bg-slate-900 border border-slate-300 rounded-xl overflow-hidden relative shadow-inner">
+                        <canvas id="simCanvas"></canvas>
+                    </div>
+
+                    <!-- Experiment Action Buttons -->
+                    <div class="flex items-center justify-center space-x-3 mt-3">
+                        <button id="btn-start-sim" onclick="toggleSimulation()" class="bg-cyan-600 hover:bg-cyan-700 active:scale-95 text-white font-bold px-6 py-2.5 sm:px-5 sm:py-2 rounded-xl text-xs sm:text-sm transition flex items-center space-x-2 shadow-md">
+                            <i class="fa-solid fa-play" id="icon-sim-start"></i>
+                            <span id="text-sim-start">เริ่มทดลอง</span>
+                        </button>
+                        <button onclick="resetSimulation()" class="bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-700 font-semibold px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm transition flex items-center space-x-1.5 border border-slate-300">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>ทดลองใหม่</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right: Control Panel & Live Data Output -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 flex flex-col space-y-4 justify-between shadow-sm">
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center space-x-2">
+                            <i class="fa-solid fa-sliders text-cyan-600"></i>
+                            <span>แผงควบคุมและวัดค่า</span>
+                        </h4>
+
+                        <!-- Dynamic Control Inputs -->
+                        <div id="controls-panel" class="space-y-4">
+                            <!-- Controls injected dynamically per level -->
+                        </div>
+                    </div>
+
+                    <!-- Scientific Explanation Box -->
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <h5 class="text-xs font-bold text-amber-800 mb-1 flex items-center space-x-1">
+                            <i class="fa-solid fa-circle-info text-amber-600"></i>
+                            <span>คำอธิบายผลการทดลอง</span>
+                        </h5>
+                        <p class="text-xs text-amber-900 leading-relaxed" id="lab-explanation">
+                            ปรับค่าการทดลองและกดเริ่มทดลองเพื่อสังเกตการเปลี่ยนแปลงของการไหลเวียนอากาศ
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. QUIZ SCREEN -->
+        <section id="screen-quiz" class="screen-view hidden py-2 sm:py-4 max-w-3xl mx-auto w-full">
+            <div class="bg-white border border-slate-200 rounded-3xl p-4 sm:p-8 shadow-xl space-y-4 sm:space-y-6">
+                <!-- Quiz Progress Bar -->
+                <div class="flex items-center justify-between text-xs text-slate-500 font-medium">
+                    <span id="quiz-level-name" class="font-bold text-slate-700 truncate mr-2">แบบทดสอบด่านที่ 1</span>
+                    <span id="quiz-progress-text" class="shrink-0">ข้อ 1 / 5</span>
+                </div>
+                <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
+                    <div id="quiz-progress-bar" class="bg-gradient-to-r from-cyan-500 to-blue-600 h-full w-1/5 transition-all duration-300"></div>
+                </div>
+
+                <!-- Question Text -->
+                <div class="bg-slate-50 p-3.5 sm:p-5 rounded-2xl border border-slate-200">
+                    <h3 class="text-base sm:text-xl font-bold text-slate-800 leading-snug" id="quiz-question-text">
+                        คำถามจะแสดงที่นี่
+                    </h3>
+                </div>
+
+                <!-- 4 Options Grid -->
+                <div class="grid grid-cols-1 gap-2.5 sm:gap-3" id="quiz-options-container">
+                    <!-- Option items injected dynamically -->
+                </div>
+
+                <!-- Feedback Banner -->
+                <div id="quiz-feedback" class="hidden p-3.5 sm:p-4 rounded-xl border text-xs sm:text-sm flex flex-col space-y-1.5">
+                    <div class="font-bold flex items-center space-x-2" id="feedback-title"></div>
+                    <p class="text-xs leading-relaxed" id="feedback-detail"></p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end items-center pt-2">
+                    <button id="btn-quiz-submit" onclick="submitAnswer()" class="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 active:scale-95 text-white font-bold px-6 py-3 sm:py-2.5 rounded-xl text-xs sm:text-sm transition flex items-center justify-center space-x-2 shadow-md">
+                        <span>ยืนยันคำตอบ</span>
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button id="btn-quiz-next" onclick="nextQuestion()" class="hidden w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-6 py-3 sm:py-2.5 rounded-xl text-xs sm:text-sm transition flex items-center justify-center space-x-2 shadow-md">
+                        <span>ข้อถัดไป</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. SUMMARY & BADGE SCREEN -->
+        <section id="screen-summary" class="screen-view hidden py-6 text-center max-w-2xl mx-auto w-full">
+            <div class="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl space-y-6 relative overflow-hidden">
+                <!-- SUCCESS BANNER -->
+                <div class="bg-emerald-50 border border-emerald-200 rounded-2xl py-2 px-4 inline-flex items-center space-x-2 text-emerald-700 font-bold text-sm shadow-sm">
+                    <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+                    <span id="summary-completed-tag">🎉 ด่านที่ 1 สำเร็จแล้ว!</span>
+                </div>
+
+                <div class="w-24 h-24 mx-auto bg-gradient-to-tr from-amber-400 to-yellow-500 rounded-full flex items-center justify-center text-5xl text-white shadow-lg glow-effect">
+                    <i class="fa-solid fa-award" id="badge-icon"></i>
+                </div>
+
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-widest text-cyan-600" id="summary-header-tag">สรุปผลการเรียนรู้</span>
+                    <h2 class="text-3xl font-extrabold text-slate-900 mt-1" id="summary-badge-title">นักสำรวจฝึกหัด</h2>
+                    <p class="text-sm text-slate-500 mt-2" id="summary-subtitle">ยินดีด้วย! คุณทำภารกิจสำเร็จแล้ว</p>
+                </div>
+
+                <!-- Score Board Card -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 grid grid-cols-2 gap-4">
+                    <div class="text-center border-r border-slate-200">
+                        <p class="text-xs text-slate-500">คะแนนด่านนี้</p>
+                        <p class="text-2xl font-black text-cyan-600 mt-1" id="summary-level-score">4 / 4</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs text-slate-500">คะแนนสะสมรวม</p>
+                        <p class="text-2xl font-black text-amber-500 mt-1" id="summary-total-score">20 / 20</p>
+                    </div>
+                </div>
+
+                <!-- All Levels Breakdown Table (Shown when all 5 levels completed) -->
+                <div id="all-levels-summary-box" class="hidden bg-cyan-50/70 border border-cyan-200 rounded-2xl p-4 text-left">
+                    <h4 class="text-xs font-bold text-cyan-800 mb-2 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-list-check text-cyan-600"></i>
+                        <span>ตารางสรุปคะแนนรวมทั้ง 5 ภารกิจ</span>
+                    </h4>
+                    <div class="grid grid-cols-5 gap-2 text-center text-xs" id="level-scores-breakdown">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap justify-center gap-4 pt-2">
+                    <button id="btn-summary-next-level" onclick="goToNextLevel()" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-6 py-3 rounded-xl transition text-sm flex items-center space-x-2 shadow-md">
+                        <span id="text-summary-next-level">ไปด่านต่อไป</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                    <button onclick="showScreen('level-select')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-6 py-3 rounded-xl border border-slate-300 transition text-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span>กลับไปหน้าเลือกด่าน</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-500">
+        Wind Science Simulator &copy; สื่อการเรียนรู้วิทยาศาสตร์ ระดับชั้นประถมศึกษาปีที่ 6 (เรื่องการเกิดลม)
+    </footer>
+
+    <!-- MODALS -->
+
+    <!-- KNOWLEDGE SUMMARY MODAL -->
+    <div id="modal-knowledge" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div class="flex items-center space-x-2 text-cyan-700 font-bold text-lg">
+                    <i class="fa-solid fa-book"></i>
+                    <span>สรุปสาระสำคัญวิทยาศาสตร์: การเกิดลม</span>
+                </div>
+                <button onclick="closeKnowledgeModal()" class="text-slate-400 hover:text-slate-700">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto space-y-4 pr-1 text-xs sm:text-sm text-slate-700">
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 class="font-bold text-cyan-800 mb-1">1. ลมคืออะไร?</h4>
+                    <p>ลม คือ **อากาศที่เคลื่อนที่** เกิดจากความแตกต่างของอุณหภูมิและความกดอากาศสองบริเวณ สังเกตลมได้จากวัตถุที่พัดปลิว กังหันลมหมุน หรือใบไม้ไหว</p>
+                </div>
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 class="font-bold text-cyan-800 mb-1">2. อุณหภูมิและความหนาแน่นอากาศ</h4>
+                    <p>เมื่ออากาศได้รับความร้อนจะขยายตัว **ความหนาแน่นลดลง และลอยตัวสูงขึ้น** ส่วนอากาศที่เย็นกว่าจะมีความหนาแน่นมากกว่า จึงเคลื่อนที่เข้ามาแทนที่</p>
+                </div>
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 class="font-bold text-cyan-800 mb-1">3. ความกดอากาศ (Air Pressure)</h4>
+                    <p>บริเวณที่มีอุณหภูมิต่ำจะมี **ความกดอากาศสูง (H)** บริเวณอุณหภูมิสูงจะมี **ความกดอากาศต่ำ (L)** ลมบริเวณผิวพื้นจะพัดจาก **ความกดอากาศสูง (H) ไปยังความกดอากาศต่ำ (L)** เสมอ</p>
+                </div>
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 class="font-bold text-cyan-800 mb-1">4. ลมทะเล และ ลมบก</h4>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong class="text-amber-700">ลมทะเล (Sea Breeze):</strong> เกิดใน **เวลากลางวัน** พื้นดินร้อนเร็วกว่าพื้นน้ำ อากาศเหนือฝั่งลอยตัวขึ้น อากาศเย็นเหนือทะเลพัด **จากทะเลเข้าสู่ฝั่ง**</li>
+                        <li><strong class="text-blue-700">ลมบก (Land Breeze):</strong> เกิดใน **เวลากลางคืน** พื้นดินคายความร้อนเร็วกว่าพื้นน้ำ อากาศเหนือทะเลอุ่นกว่าลอยตัวขึ้น อากาศเหนือฝั่งพัด **จากฝั่งออกสู่ทะเล**</li>
+                    </ul>
+                </div>
+            </div>
+            <button onclick="closeKnowledgeModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-sm border border-slate-300 transition">
+                ปิดหน้าต่าง
+            </button>
+        </div>
+    </div>
+
+    <!-- GAME ENGINE & LOGIC SCRIPT -->
+    <script>
+        /* ==========================================================================
+           GAME DATA & STATE MANAGEMENT
+           ========================================================================== */
+        const GAME_CONFIG = {
+            totalLevels: 5,
+            pointsPerQuestion: 1,
+            questionsPerLevel: 4
+        };
+
+        // User Progress State
+        let gameState = {
+            scores: [0, 0, 0, 0, 0], // Score for levels 1 to 5
+            unlockedLevels: [true, false, false, false, false],
+            currentLevel: 1,
+            currentQuestionIdx: 0,
+            currentQuizAnswers: [],
+            totalScore: 0
+        };
+
+        // Current Experiment Interactive State
+        let simState = {
+            running: false,
+            animationFrame: null,
+            equipmentPlaced: [],
+            // Level 1 Parameters
+            fanSpeed: 1, // 1: Low, 2: Med, 3: High
+            // Level 2 Parameters
+            tempLeft: 40, // Hot
+            tempRight: 10, // Cold
+            // Level 3 Parameters
+            pressA: 1020, // High Pressure (hPa)
+            pressB: 980,  // Low Pressure (hPa)
+            // Level 4 Parameters
+            timeOfDay: 'day', // 'day' or 'night'
+            // Level 5 Parameters
+            challengeScenario: 1, // 1, 2, 3
+            userPrediction: null
+        };
+
+        /* ==========================================================================
+           AUDIO SYNTHESIZER (WEB AUDIO API)
+           ========================================================================== */
+        let audioEnabled = true;
+        let audioCtx = null;
+        let windNoiseNode = null;
+        let windGainNode = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            const btnIcon = document.getElementById('icon-audio');
+            const btnText = document.getElementById('text-audio');
+            if (audioEnabled) {
+                btnIcon.className = "fa-solid fa-volume-high text-cyan-600";
+                if (btnText) btnText.innerText = "เปิดเสียง";
+                playClickSound();
+            } else {
+                btnIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+                if (btnText) btnText.innerText = "ปิดเสียง";
+                stopWindSound();
+            }
+        }
+
+        function playClickSound() {
+            if (!audioEnabled) return;
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.08);
+        }
+
+        function playCorrectSound() {
+            if (!audioEnabled) return;
+            initAudio();
+            const now = audioCtx.currentTime;
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+            notes.forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now + idx * 0.08);
+                osc.stop(now + idx * 0.08 + 0.25);
+            });
+        }
+
+        function playWrongSound() {
+            if (!audioEnabled) return;
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.linearRampToValueAtTime(110, now + 0.25);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.25);
+        }
+
+        function playVictorySound() {
+            if (!audioEnabled) return;
+            initAudio();
+            const now = audioCtx.currentTime;
+            const melody = [
+                { f: 523.25, d: 0.12 }, { f: 659.25, d: 0.12 }, { f: 783.99, d: 0.12 },
+                { f: 1046.50, d: 0.40 }
+            ];
+            let time = now;
+            melody.forEach(note => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(note.f, time);
+                gain.gain.setValueAtTime(0.25, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + note.d);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(time);
+                osc.stop(time + note.d);
+                time += note.d + 0.04;
+            });
+        }
+
+        function startWindSound() {
+            if (!audioEnabled) return;
+            initAudio();
+            if (windNoiseNode) return;
+
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            let lastOut = 0.0;
+            for (let i = 0; i < bufferSize; i++) {
+                const white = Math.random() * 2 - 1;
+                output[i] = (lastOut + (0.02 * white)) / 1.02; // Pink-ish noise filter
+                lastOut = output[i];
+                output[i] *= 3.5;
+            }
+
+            windNoiseNode = audioCtx.createBufferSource();
+            windNoiseNode.buffer = noiseBuffer;
+            windNoiseNode.loop = true;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(400, audioCtx.currentTime);
+
+            windGainNode = audioCtx.createGain();
+            const vol = Math.min(0.2, 0.05 + (simState.fanSpeed || 1) * 0.04);
+            windGainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+
+            windNoiseNode.connect(filter);
+            filter.connect(windGainNode);
+            windGainNode.connect(audioCtx.destination);
+            windNoiseNode.start();
+        }
+
+        function stopWindSound() {
+            if (windNoiseNode) {
+                try {
+                    windNoiseNode.stop();
+                    windNoiseNode.disconnect();
+                } catch(e) {}
+                windNoiseNode = null;
+            }
+        }
+
+        /* ==========================================================================
+           LEVELS DATA DEFINITION (OBJECTS, QUIZZES, EXPERIMENTS)
+           ========================================================================== */
+        const LEVELS_DATA = [
+            {
+                id: 1,
+                title: "รู้จักการเกิดลม (What is Wind?)",
+                desc: "ทดลองเปิดพัดลมจำลอง และสังเกตการเคลื่อนที่ของอากาศผ่านริบบิ้นและกังหันลม",
+                introText: "<strong>ภารกิจ:</strong> ให้ผู้เรียนปรับระดับความเร็วลมของพัดลม สังเกตการหมุนของกังหันลม การปลิวของริบบิ้น และเครื่องวัดความเร็วลม เพื่อทำความเข้าใจว่า <em>ลมคืออากาศที่กำลังเคลื่อนที่</em>",
+                equipments: [],
+                explanation: "เมื่อเปิดพัดลม พัดลมจะผลักดันให้อากาศเคลื่อนที่เกิดเป็น 'ลม' สังเกตได้จากกังหันลมที่หมุนเร็วขึ้นตามระดับพัดลม และริบบิ้นที่ปลิวไปตามทิศทางของลม",
+                quizzes: [
+                    {
+                        q: "1. ลม (Wind) ทางวิทยาศาสตร์หมายถึงข้อใดถูกต้องที่สุด?",
+                        options: ["A. อากาศที่หยุดนิ่งอยู่กับที่", "B. อากาศที่กำลังเคลื่อนที่", "C. ก๊าซออกซิเจนบริสุทธิ์", "D. ไอน้ำที่กลั่นตัวเป็นหยดน้ำ"],
+                        ans: 1,
+                        exp: "คำอธิบาย: ลม คือ อากาศที่เกิดการเคลื่อนที่จากบริเวณหนึ่งไปยังอีกบริเวณหนึ่ง"
+                    },
+                    {
+                        q: "2. ข้อใดเป็นสิ่งสังเกตที่แสดงว่ามีลมเกิดขึ้นในบริเวณนั้น?",
+                        options: ["A. หินก้อนใหญ่ตั้งนิ่งบนพื้น", "B. ใบไม้ไหวและกังหันลมหมุน", "C. น้ำส้มในแก้วมีสีเข้มขึ้น", "D. ดวงอาทิตย์ส่องแสงสว่าง"],
+                        ans: 1,
+                        exp: "คำอธิบาย: การหมุนของกังหันลมและการปลิวของใบไม้เกิดจากแรงดันของอากาศที่กำลังเคลื่อนที่ (ลม)"
+                    },
+                    {
+                        q: "3. เมื่อปรับระดับพัดลมจากเบาไปแรง จะเกิดผลอย่างไรกับกังหันลมและริบบิ้น?",
+                        options: ["A. กังหันลมหยุดหมุน ริบบิ้นตกพื้น", "B. กังหันลมหมุนช้าลง ริบบิ้นนิ่ง", "C. กังหันลมหมุนเร็วขึ้น ริบบิ้นปลิวแรงขึ้น", "D. ไม่มีอะไรเปลี่ยนแปลง"],
+                        ans: 2,
+                        exp: "คำอธิบาย: ความเร็วลมที่เพิ่มขึ้นจะถ่ายโอนพลังงานปะทะกับกังหันลมทำให้หมุนเร็วขึ้น และดันริบบิ้นให้ปลิวแรงขึ้น"
+                    },
+                    {
+                        q: "4. เครื่องมือวิทยาศาสตร์ชนิดใดใช้สำหรับวัดความเร็วของลม?",
+                        options: ["A. เทอร์มอมิเตอร์ (Thermometer)", "B. บารอมิเตอร์ (Barometer)", "C. แอนีโมมิเตอร์ (Anemometer)", "D.ไฮโกรมิเตอร์ (Hygrometer)"],
+                        ans: 2,
+                        exp: "คำอธิบาย: เครื่องวัดความเร็วลม เรียกว่า แอนีโมมิเตอร์ (Anemometer)"
+                    }
+                ]
+            },
+            {
+                id: 2,
+                title: "อุณหภูมิกับการเคลื่อนที่ของอากาศ",
+                desc: "เรียนรู้ว่าอุณหภูมิร้อนและเย็น ส่งผลต่อความหนาแน่นและการลอยตัวของอากาศอย่างไร",
+                introText: "<strong>ภารกิจ:</strong> ให้ผู้เรียนปรับระดับอุณหภูมิฝั่งความร้อน (ด้านซ้าย) และฝั่งความเย็น (ด้านขวา) สังเกตการลอยตัวสูงขึ้นของอากาศอุ่นที่มีความหนาแน่นต่ำ และการพัดเข้ามาแทนที่ของอากาศเย็นที่มีความหนาแน่นสูงกว่า",
+                equipments: [],
+                explanation: "อากาศเมื่อได้รับความร้อนจะขยายตัว มีความหนาแน่นลดลงและลอยตัวสูงขึ้น ส่วนอากาศที่เย็นกว่าจะมีความหนาแน่นมากกว่าจึงเคลื่อนที่เข้ามาแทนที่ ทำให้เกิดการไหลเวียนของอากาศครบวงรอบ",
+                quizzes: [
+                    {
+                        q: "1. เมื่ออากาศได้รับความร้อน ปริมาตรและความหนาแน่นของอากาศจะเปลี่ยนแปลงอย่างไร?",
+                        options: ["A. หดตัว และมีความหนาแน่นเพิ่มขึ้น", "B. ขยายตัว และมีความหนาแน่นลดลง", "C. หดตัว แต่ความหนาแน่นเท่าเดิม", "D. ไม่เกิดการเปลี่ยนแปลงใดๆ"],
+                        ans: 1,
+                        exp: "คำอธิบาย: ความร้อนทำให้อนุภาคอากาศขยายตัวและอยู่ห่างกันมากขึ้น ความหนาแน่นจึงลดลง"
+                    },
+                    {
+                        q: "2. อากาศที่มีอุณหภูมิสูงกว่าเมื่อเปรียบเทียบกับอากาศเย็นที่ความดันเท่ากัน จะมีแนวโน้มเคลื่อนที่อย่างไร?",
+                        options: ["A. จมตัวลงสู่พื้นดิน", "B. ลอยตัวสูงขึ้นเบื้องบน", "C. อยู่นิ่งไม่เคลื่อนที่", "D. กลายเป็นน้ำแข็งทันที"],
+                        ans: 1,
+                        exp: "คำอธิบาย: อากาศอุ่นมีความหนาแน่นน้อยกว่าอากาศเย็น จึงเบากว่าและลอยตัวสูงขึ้น"
+                    },
+                    {
+                        q: "3. เมื่ออากาศอุ่นลอยตัวสูงขึ้น อากาศที่เย็นกว่าในบริเวณใกล้เคียงจะเคลื่อนที่อย่างไร?",
+                        options: ["A. ลอยตัวสูงขึ้นตามไป", "B. เคลื่อนที่เข้ามาแทนที่บริเวณที่อากาศอุ่นลอยออกไป", "C. สลายตัวหายไปในอากาศ", "D. หยุดเคลื่อนที่ทุกทิศทาง"],
+                        ans: 1,
+                        exp: "คำอธิบาย: อากาศเย็นที่หนักกว่าจะพัดเข้ามาแทนที่ช่องว่างที่อากาศอุ่นลอยตัวสูงขึ้นไป"
+                    },
+                    {
+                        q: "4. ปัจจัยพื้นฐานสำคัญที่สุดในด่านนี้ที่ทำให้เกิดการเคลื่อนที่ของอากาศคืออะไร?",
+                        options: ["A. ความแตกต่างของอุณหภูมิ", "B. สีของกล่องทดลอง", "C. ชนิดของภาชนะบรรจุ", "D. ปริมาณแสงสว่างในห้อง"],
+                        ans: 0,
+                        exp: "คำอธิบาย: ความแตกต่างของอุณหภูมิทำให้เกิดความแตกต่างของความหนาแน่นและการเคลื่อนที่ของอากาศ"
+                    }
+                ]
+            },
+            {
+                id: 3,
+                title: "ความกดอากาศสูงและต่ำ (Air Pressure)",
+                desc: "สำรวจความสัมพันธ์ระหว่างแรงดันอากาศสองบริเวณ กับทิศทางและความเร็วของลม",
+                introText: "<strong>ภารกิจ:</strong> ปรับค่าความกดอากาศในพื้นที่ A และ B สังเกตทิศทางลูกศรลมว่าจะพัดจากความกดอากาศสูง (H) ไปยังความกดอากาศต่ำ (L) เสมอ และยิ่งต่างกันมาก ลมยิ่งพัดแรง!",
+                equipments: [],
+                explanation: "ลมเกิดจากการเคลื่อนที่ของอากาศจากบริเวณที่มีความกดอากาศสูง (H) ไปยังบริเวณที่มีความกดอากาศต่ำ (L) หากความแตกต่างของความกดอากาศมีมาก ลมจะพัดรุนแรงขึ้น",
+                quizzes: [
+                    {
+                        q: "1. ลมจะพัดจากบริเวณที่มีลักษณะความกดอากาศอย่างไรไปยังอีกบริเวณหนึ่ง?",
+                        options: [
+                            "A. จากความกดอากาศต่ำ ไป ความกดอากาศสูง",
+                            "B. จากความกดอากาศสูง ไป ความกดอากาศต่ำ",
+                            "C. จากบริเวณไม่มีอากาศ ไป บริเวณมีอากาศ",
+                            "D. พัดทิศทางใดก็ได้ไม่มีรูปแบบแน่นอน"
+                        ],
+                        ans: 1,
+                        exp: "คำอธิบาย: ลมบริเวณผิวพื้นจะพัดจากบริเวณความกดอากาศสูง (High Pressure: H) ไปยังความกดอากาศต่ำ (Low Pressure: L)"
+                    },
+                    {
+                        q: "2. หากความกดอากาศระหว่างพื้นที่ A และพื้นที่ B มีค่าเท่ากันพอดี จะเกิดผลอย่างไร?",
+                        options: ["A. เกิดลมพัดรุนแรงมาก", "B. เกิดลมพายุหมุน", "C. ไม่เกิดการเคลื่อนที่ของลม", "D. อากาศจะกลายเป็นสุญญากาศ"],
+                        ans: 2,
+                        exp: "คำอธิบาย: เมื่อไม่มีความแตกต่างของความกดอากาศ จะไม่มีแรงดันให้อากาศเคลื่อนที่ เกิดเป็นสภาพลมสงบ"
+                    },
+                    {
+                        q: "3. หากความแตกต่างของความกดอากาศระหว่างสองบริเวณมีค่ามากยิ่งขึ้น ความเร็วลมจะเป็นอย่างไร?",
+                        options: ["A. ลมจะพัดช้าลง", "B. ลมจะพัดแรงยิ่งขึ้น", "C. ความเร็วลมคงที่เท่าเดิม", "D. ลมจะพัดย้อนกลับทิศทางเดิม"],
+                        ans: 1,
+                        exp: "คำอธิบาย: ยิ่งความแตกต่างของความกดอากาศมาก ความเค้นความกดอากาศยิ่งมาก ทำให้ความเร็วลมสูงขึ้น"
+                    },
+                    {
+                        q: "4. เครื่องมือทางวิทยาศาสตร์ชนิดใดที่ใช้วัดค่าความกดอากาศ?",
+                        options: ["A. บารอมิเตอร์ (Barometer)", "B. เทอร์มอมิเตอร์ (Thermometer)", "C. ไมโครเมตร (Micrometer)", "D. ไม้บรรทัด (Ruler)"],
+                        ans: 0,
+                        exp: "คำอธิบาย: เครื่องมือวัดความกดอากาศคือ บารอมิเตอร์"
+                    }
+                ]
+            },
+            {
+                id: 4,
+                title: "การเกิดลมทะเลและลมบก (Sea & Land Breeze)",
+                desc: "จำลองชายฝั่งทะเล เปรียบเทียบการรับ-คายความร้อนของพื้นดินและพื้นน้ำในเวลากลางวันและกลางคืน",
+                introText: "<strong>ภารกิจ:</strong> สลับสถานการณ์ระหว่าง 'กลางวัน' และ 'กลางคืน' สังเกตว่ากลางวันพื้นดินร้อนกว่าเกิดลมทะเล (พัดเข้าฝั่ง) ส่วนกลางคืนพื้นดินเย็นกว่าเกิดลมบก (พัดออกทะเล)",
+                equipments: [],
+                explanation: "เวลากลางวัน พื้นดินร้อนเร็วกว่าพื้นน้ำ อากาศเหนือฝั่งลอยตัวขึ้น อากาศเย็นจากทะเลพัดเข้าฝั่งเรียกว่า 'ลมทะเล' ส่วนกลางคืน พื้นดินคายความร้อนเร็วกว่าพื้นน้ำ อากาศเย็นเหนือฝั่งพัดออกสู่ทะเลเรียกว่า 'ลมบก'",
+                quizzes: [
+                    {
+                        q: "1. 'ลมทะเล' มีทิศทางการพัดและเกิดขึ้นในช่วงเวลาใด?",
+                        options: [
+                            "A. พัดจากฝั่งออกสู่ทะเล เกิดในเวลากลางคืน",
+                            "B. พัดจากทะเลเข้าสู่ฝั่ง เกิดในเวลากลางวัน",
+                            "C. พัดจากทะเลเข้าสู่ฝั่ง เกิดในเวลากลางคืน",
+                            "D. พัดจากฝั่งออกสู่ทะเล เกิดในเวลากลางวัน"
+                        ],
+                        ans: 1,
+                        exp: "คำอธิบาย: ลมทะเลเกิดในเวลากลางวัน พัดจากทะเลเข้าหาฝั่ง (ตามชื่อ ลมทะเล)"
+                    },
+                    {
+                        q: "2. เหตุใดในเวลากลางคืน อากาศเหนือพื้นน้ำทะเลจึงอุ่นกว่าอากาศเหนือพื้นดิน?",
+                        options: [
+                            "A. พื้นน้ำรับความร้อนจากดวงจันทร์ได้ดี",
+                            "B. พื้นดินคายความร้อนได้เร็วกว่าพื้นน้ำ พื้นดินจึงเย็นกว่า",
+                            "C. ทะเลมีคลื่นสร้างความร้อนอยู่ตลอดเวลา",
+                            "D. พื้นดินไม่มีอากาศครอบคลุมอยู่"
+                        ],
+                        ans: 1,
+                        exp: "คำอธิบาย: พื้นดินรับและคายความร้อนได้เร็วกว่าพื้นน้ำ ในเวลากลางคืนพื้นดินจึงเย็นลงอย่างรวดเร็ว ในขณะที่พื้นน้ำยังคงอมความร้อนอยู่"
+                    },
+                    {
+                        q: "3. ลมบก (Land Breeze) บริเวณผิวพื้น มีทิศทางการพัดอย่างไร?",
+                        options: [
+                            "A. พัดจากฝั่งออกสู่ทะเล",
+                            "B. พัดจากทะเลเข้าสู่ฝั่ง",
+                            "C. พัดดิ่งลงจากท้องฟ้าสู่พื้นดิน",
+                            "D. พัดหมุนวนอยู่กึ่งกลางชายฝั่ง"
+                        ],
+                        ans: 0,
+                        exp: "คำอธิบาย: ลมบกเกิดในเวลากลางคืน อากาศเย็นเหนือฝั่งพัดออกสู่ทะเล"
+                    },
+                    {
+                        q: "4. สมบัติการรับและคายความร้อนระหว่าง 'พื้นดิน' กับ 'พื้นน้ำ' ข้อใดถูกต้อง?",
+                        options: [
+                            "A. พื้นดินรับและคายความร้อนได้ ช้ากว่า พื้นน้ำ",
+                            "B. พื้นดินรับและคายความร้อนได้ เร็วกว่า พื้นน้ำ",
+                            "C. ทั้งสองชนิดรับและคายความร้อนได้เท่ากันทุกประการ",
+                            "D. พื้นน้ำรับความร้อนได้เร็ว แต่คายความร้อนไม่ได้"
+                        ],
+                        ans: 1,
+                        exp: "คำอธิบาย: พื้นดินมีความร้อนจำเพาะต่ำกว่า จึงรับความร้อนได้เร็วและคายความร้อนได้เร็วกว่าพื้นน้ำ"
+                    }
+                ]
+            },
+            {
+                id: 5,
+                title: "นักพยากรณ์ลมตัวน้อย (Wind Scientist Challenge)",
+                desc: "ภารกิจสรุปทดสอบสถานการณ์จำลอง วิเคราะห์ทิศทางลมใน 3 สถานการณ์จริง",
+                introText: "<strong>ภารกิจ:</strong> สวมบทบาทนักพยากรณ์อากาศ! เลือกทำนายทิศทางลมตามสถานการณ์อุณหภูมิและความกดอากาศที่กำหนด แล้วกดปุ่มทดลองจำลองเพื่อดูว่าการทำนายของคุณถูกต้องหรือไม่!",
+                equipments: [],
+                explanation: "นักวิทยาศาสตร์ตัวน้อยใช้ความรู้รวมเรื่อง อุณหภูมิ ความหนาแน่น ความกดอากาศ และสมบัติของพื้นดินพื้นน้ำ ในการวิเคราะห์และทำนายทิศทางการเคลื่อนที่ของลมได้อย่างแม่นยำ!",
+                quizzes: [
+                    {
+                        q: "1. สรุปปัจจัยสำคัญที่เป็นแรงขับเคลื่อนหลักทำให้เกิดลมคือข้อใด?",
+                        options: [
+                            "A. ความแตกต่างของความกดอากาศเนื่องจากอุณหภูมิแตกต่างกัน",
+                            "B. แสงสว่างจากดวงจันทร์และดาวตก",
+                            "C. แรงเหวี่ยงจากการหมุนของกังหันลม",
+                            "D. การไหลของน้ำในแม่น้ำลำคลอง"
+                        ],
+                        ans: 0,
+                        exp: "คำอธิบาย: ความแตกต่างของอุณหภูมิทำให้เกิดความกดอากาศแตกต่างกัน อากาศจึงเคลื่อนที่เกิดเป็นลม"
+                    },
+                    {
+                        q: "2. หากเมือง A มีอุณหภูมิ 22°C (ความกดอากาศสูง) และเมือง B มีอุณหภูมิ 36°C (ความกดอากาศต่ำ) ลมผิวพื้นจะพัดอย่างไร?",
+                        options: [
+                            "A. พัดจากเมือง B ไปเมือง A",
+                            "B. พัดจากเมือง A ไปเมือง B",
+                            "C. อากาศจะไม่เคลื่อนที่ระหว่างสองเมือง",
+                            "D. พัดขึ้นสู่ชั้นบรรยากาศอวกาศ"
+                        ],
+                        ans: 1,
+                        exp: "คำอธิบาย: ลมพัดจากบริเวณความกดอากาศสูง (เมือง A อุณหภูมิต่ำกว่า) ไปยังความกดอากาศต่ำ (เมือง B อุณหภูมิสูงกว่า)"
+                    },
+                    {
+                        q: "3. ชาวประมงพื้นบ้านในอดีตมักใช้นวัตกรรมการพัดของลมชนิดใดในการออกเรือจับปลาในเวลากลางคืน?",
+                        options: ["A. ลมทะเล", "B. ลมบก", "C. ลมมรสุมตะวันตกเฉียงใต้", "D. ลมไต้ฝุ่น"],
+                        ans: 1,
+                        exp: "คำอธิบาย: ชาวประมงใช้ 'ลมบก' ซึ่งพัดจากฝั่งออกสู่ทะเลในเวลากลางคืน เพื่อช่วยพัดเรือออกจากฝั่ง"
+                    },
+                    {
+                        q: "4. ข้อใดกล่าวถูกต้องที่สุดเกี่ยวกับทิศทางการไหลเวียนของอากาศในระดับผิวพื้นและระดับสูง?",
+                        options: [
+                            "A. อากาศไหลเวียนในทิศทางเดียวกันตลอดทุกระดับ",
+                            "B. อากาศผิวพื้นพัดจาก H ไป L ส่วนระดับสูงพัดสวนกลับเกิดเป็นวงรอบการไหลเวียน (Cell)",
+                            "C. อากาศเคลื่อนที่เฉพาะผิวพื้น ระดับสูงไม่มีอากาศเลย",
+                            "D. อากาศเคลื่อนที่หมุนวนเป็นวงกลมในแนวราบเท่านั้น"
+                        ],
+                        ans: 1,
+                        exp: "คำอธิบาย: การไหลเวียนของอากาศครบวงจร อากาศผิวพื้นพัดจาก H ไป L ส่วนอากาศอุ่นที่ลอยตัวสูงขึ้นจะพัดย้อนกลับไปด้านบนเพื่อชดเชยเกิดเป็นวงรอบ (Circulation Cell)"
+                    }
+                ]
+            }
+        ];
+
+        /* ==========================================================================
+           CORE ENGINE & NAVIGATION
+           ========================================================================== */
+        window.addEventListener('load', () => {
+            loadSavedData();
+            initCanvas();
+            renderLevelCards();
+            updateGlobalScoreUI();
+            showScreen('home');
+
+            // Handle window resize and mobile orientation changes for Canvas
+            window.addEventListener('resize', handleCanvasResize);
+            window.addEventListener('orientationchange', () => {
+                setTimeout(handleCanvasResize, 250);
+            });
+        });
+
+        function loadSavedData() {
+            try {
+                const saved = localStorage.getItem('wind_sim_data_v1');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    gameState.scores = parsed.scores || gameState.scores;
+                    gameState.unlockedLevels = parsed.unlockedLevels || gameState.unlockedLevels;
+                }
+            } catch (e) {
+                console.warn('Cannot load storage', e);
+            }
+            recalcTotalScore();
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('wind_sim_data_v1', JSON.stringify({
+                    scores: gameState.scores,
+                    unlockedLevels: gameState.unlockedLevels
+                }));
+            } catch (e) {
+                console.warn('Cannot save storage', e);
+            }
+            recalcTotalScore();
+        }
+
+        function recalcTotalScore() {
+            gameState.totalScore = gameState.scores.reduce((a, b) => a + b, 0);
+            updateGlobalScoreUI();
+        }
+
+        function updateGlobalScoreUI() {
+            document.getElementById('global-score').innerText = `${gameState.totalScore} / 20`;
+        }
+
+        function showScreen(screenId) {
+            playClickSound();
+            document.querySelectorAll('.screen-view').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(`screen-${screenId}`);
+            if (target) {
+                target.classList.remove('hidden');
+            }
+
+            if (screenId === 'level-select') {
+                renderLevelCards();
+            }
+        }
+
+        /* ==========================================================================
+           LEVEL SELECTION SCREEN BUILDER
+           ========================================================================== */
+        function renderLevelCards() {
+            const container = document.getElementById('levels-container');
+            container.innerHTML = '';
+
+            LEVELS_DATA.forEach((lvl, idx) => {
+                const unlocked = gameState.unlockedLevels[idx];
+                const score = gameState.scores[idx];
+                const maxScore = lvl.quizzes ? lvl.quizzes.length : 4;
+                const isPassed = score > 0;
+
+                const card = document.createElement('div');
+                card.className = `rounded-2xl p-6 border flex flex-col justify-between transition transform ${
+                    unlocked 
+                    ? (isPassed ? 'bg-gradient-to-b from-emerald-50/50 to-white border-emerald-300 hover:-translate-y-1 shadow-md cursor-pointer' : 'bg-white border-slate-200 hover:-translate-y-1 hover:border-cyan-500 shadow-md cursor-pointer') 
+                    : 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
+                }`;
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-full ${isPassed ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (unlocked ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-200 text-slate-500')}">
+                                ${isPassed ? '✓ สำเร็จแล้ว' : `ด่านที่ ${lvl.id}`}
+                            </span>
+                            ${unlocked 
+                                ? `<span class="text-xs font-semibold ${isPassed ? 'text-emerald-600 font-bold' : 'text-amber-600'} flex items-center space-x-1"><i class="fa-solid fa-star"></i> <span>${score} / ${maxScore}</span></span>` 
+                                : '<i class="fa-solid fa-lock text-slate-400 text-base"></i>'}
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">${lvl.title}</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed mb-4">${lvl.desc}</p>
+                    </div>
+                    <div>
+                        ${unlocked 
+                            ? `<button onclick="startLevel(${lvl.id})" class="w-full ${isPassed ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-cyan-600 hover:bg-cyan-700'} text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center space-x-2 shadow-sm">
+                                <i class="fa-solid ${isPassed ? 'fa-circle-check' : 'fa-flask'}"></i> <span>${isPassed ? 'เข้าสู่ห้องทดลอง (ผ่านแล้ว)' : 'เข้าสู่ห้องทดลอง'}</span>
+                               </button>` 
+                            : `<button disabled class="w-full bg-slate-200 text-slate-400 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-lock"></i> <span>ด่านยังไม่ปลดล็อก</span>
+                               </button>`}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function startLevel(levelId) {
+            gameState.currentLevel = levelId;
+            const lvlData = LEVELS_DATA[levelId - 1];
+
+            // Update Header Lab Title
+            document.getElementById('lab-level-number').innerText = `ด่านที่ ${lvlData.id}`;
+            document.getElementById('lab-level-title').innerText = lvlData.title;
+            document.getElementById('lab-explanation').innerText = lvlData.explanation;
+
+            // Render Lab Equipments & Controls
+            renderEquipmentList(lvlData.equipments);
+            renderControlPanel(levelId);
+
+            // Setup Simulation State
+            resetSimulationStateForLevel(levelId);
+
+            // Show Screen Directly
+            showScreen('lab');
+
+            // Resize and start Canvas
+            setTimeout(() => {
+                handleCanvasResize();
+                resetSimulation();
+            }, 100);
+        }
+
+        /* ==========================================================================
+           LAB & EXPERIMENT CONTROLS RENDERING
+           ========================================================================== */
+        function renderEquipmentList(equipments) {
+            const sidebarContainer = document.getElementById('equipment-list').parentElement;
+            
+            // Hidden equipment sidebar for Level 1 if array is empty
+            if (equipments.length === 0) {
+                sidebarContainer.classList.add('hidden');
+                const canvasParent = document.getElementById('simCanvas').parentElement.parentElement;
+                canvasParent.classList.remove('lg:col-span-2');
+                canvasParent.classList.add('lg:col-span-3');
+                return;
+            } else {
+                sidebarContainer.classList.remove('hidden');
+                const canvasParent = document.getElementById('simCanvas').parentElement.parentElement;
+                canvasParent.classList.remove('lg:col-span-3');
+                canvasParent.classList.add('lg:col-span-2');
+            }
+
+            const listContainer = document.getElementById('equipment-list');
+            listContainer.innerHTML = '';
+
+            equipments.forEach((eq, idx) => {
+                const item = document.createElement('div');
+                item.className = `p-2.5 rounded-xl border bg-slate-900 border-slate-700 flex items-center space-x-3 cursor-pointer hover:border-cyan-400 transition select-none`;
+                item.id = `eq-item-${eq.id}`;
+                item.onclick = () => selectEquipment(eq.id);
+
+                item.innerHTML = `
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid ${eq.icon}"></i>
+                    </div>
+                    <div class="flex-grow">
+                        <p class="text-xs font-semibold text-slate-200">${eq.name}</p>
+                        <p class="text-[10px] text-slate-400">คลิกเพื่อติดตั้ง</p>
+                    </div>
+                    <i class="fa-solid fa-circle-check text-cyan-400 text-sm hidden" id="eq-check-${eq.id}"></i>
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+
+        function selectEquipment(eqId) {
+            if (!simState.equipmentPlaced.includes(eqId)) {
+                simState.equipmentPlaced.push(eqId);
+                const checkIcon = document.getElementById(`eq-check-${eqId}`);
+                if (checkIcon) checkIcon.classList.remove('hidden');
+                document.getElementById(`eq-item-${eqId}`).classList.add('border-cyan-500', 'bg-cyan-950/40');
+            }
+            drawSimCanvas();
+        }
+
+        function renderControlPanel(levelId) {
+            const panel = document.getElementById('controls-panel');
+            panel.innerHTML = '';
+
+            if (levelId === 1) {
+                panel.innerHTML = `
+                    <div>
+                        <label class="text-xs font-semibold text-slate-700 block mb-2">ปรับระดับความเร็วลมพัดลม</label>
+                        <div class="grid grid-cols-3 gap-2 mb-4">
+                            <button onclick="setFanSpeed(1)" id="btn-speed-1" class="py-2 bg-cyan-600 text-white rounded-lg text-xs font-bold shadow-sm">1 (ต่ำ)</button>
+                            <button onclick="setFanSpeed(2)" id="btn-speed-2" class="py-2 bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold">2 (ปานกลาง)</button>
+                            <button onclick="setFanSpeed(3)" id="btn-speed-3" class="py-2 bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold">3 (สูง)</button>
+                        </div>
+                    </div>
+                    <div class="bg-cyan-50 border border-cyan-200 rounded-xl p-3 flex justify-between items-center text-xs">
+                        <span class="font-bold text-cyan-800">💨 ความเร็วลมจำลอง:</span>
+                        <span id="val-wind-speed" class="font-extrabold text-cyan-600 text-sm">5 km/h</span>
+                    </div>
+                `;
+            } else if (levelId === 3) {
+                panel.innerHTML = `
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-cyan-700">ความกดอากาศพื้นที่ A</span>
+                            <span id="lbl-press-a" class="text-cyan-800 font-bold">1020 hPa</span>
+                        </div>
+                        <input type="range" min="950" max="1050" value="1020" oninput="updatePressA(this.value)" class="w-full accent-cyan-600">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-cyan-700">ความกดอากาศพื้นที่ B</span>
+                            <span id="lbl-press-b" class="text-cyan-800 font-bold">980 hPa</span>
+                        </div>
+                        <input type="range" min="950" max="1050" value="980" oninput="updatePressB(this.value)" class="w-full accent-cyan-600">
+                    </div>
+                `;
+            } else if (levelId === 4) {
+                panel.innerHTML = `
+                    <div>
+                        <label class="text-xs font-semibold text-slate-700 block mb-2">เลือกช่วงเวลาทดลองชายฝั่ง</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="setTimeOfDay('day')" id="btn-time-day" class="py-2.5 bg-amber-500 text-white shadow-sm rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5">
+                                <i class="fa-solid fa-sun text-lg"></i>
+                                <span>กลางวัน (ลมทะเล)</span>
+                            </button>
+                            <button onclick="setTimeOfDay('night')" id="btn-time-night" class="py-2.5 bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5">
+                                <i class="fa-solid fa-moon text-lg"></i>
+                                <span>กลางคืน (ลมบก)</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1 text-xs">
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">อุณหภูมิพื้นดิน:</span>
+                            <span id="val-temp-land" class="font-bold text-amber-600">35 °C</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">อุณหภูมิพื้นน้ำ:</span>
+                            <span id="val-temp-sea" class="font-bold text-blue-600">26 °C</span>
+                        </div>
+                    </div>
+                `;
+            } else if (levelId === 5) {
+                panel.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                            <label class="text-xs font-bold text-amber-900 block mb-1">🔥 ปรับอุณหภูมิ บริเวณ A (ซ้าย)</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" min="0" max="50" value="${simState.tempLeft}" oninput="updateLevel5TempA(this.value)" class="w-full accent-amber-500">
+                                <span id="lbl-l5-tempA" class="text-xs font-bold text-amber-700 min-w-[45px]">${simState.tempLeft} °C</span>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-200">
+                            <label class="text-xs font-bold text-blue-900 block mb-1">❄️ ปรับอุณหภูมิ บริเวณ B (ขวา)</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="range" min="0" max="50" value="${simState.tempRight}" oninput="updateLevel5TempB(this.value)" class="w-full accent-blue-500">
+                                <span id="lbl-l5-tempB" class="text-xs font-bold text-blue-700 min-w-[45px]">${simState.tempRight} °C</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function setFanSpeed(spd) {
+            playClickSound();
+            simState.fanSpeed = spd;
+            [1, 2, 3].forEach(i => {
+                const b = document.getElementById(`btn-speed-${i}`);
+                if (b) {
+                    b.className = (i === spd) 
+                        ? 'py-2 bg-cyan-600 text-white rounded-lg text-xs font-bold shadow-sm' 
+                        : 'py-2 bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold';
+                }
+            });
+            const speedText = spd === 1 ? '5 km/h' : (spd === 2 ? '15 km/h' : '30 km/h');
+            const el = document.getElementById('val-wind-speed');
+            if (el) el.innerText = speedText;
+
+            if (simState.running) {
+                stopWindSound();
+                startWindSound();
+            }
+        }
+
+        function setTimeOfDay(tod) {
+            playClickSound();
+            simState.timeOfDay = tod;
+            const bDay = document.getElementById('btn-time-day');
+            const bNight = document.getElementById('btn-time-night');
+            if (tod === 'day') {
+                bDay.className = 'py-2.5 bg-amber-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-sm';
+                bNight.className = 'py-2.5 bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5';
+                document.getElementById('val-temp-land').innerText = '35 °C';
+                document.getElementById('val-temp-sea').innerText = '26 °C';
+            } else {
+                bNight.className = 'py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-sm';
+                bDay.className = 'py-2.5 bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5';
+                document.getElementById('val-temp-land').innerText = '20 °C';
+                document.getElementById('val-temp-sea').innerText = '27 °C';
+            }
+        }
+
+        function updateTempLeft(val) {
+            simState.tempLeft = parseFloat(val);
+            const el = document.getElementById('val-temp-left');
+            if (el) el.innerText = val;
+            drawSimCanvas();
+        }
+
+        function updateTempRight(val) {
+            simState.tempRight = parseFloat(val);
+            const el = document.getElementById('val-temp-right');
+            if (el) el.innerText = val;
+            drawSimCanvas();
+        }
+
+        function updatePressA(val) {
+            simState.pressA = parseFloat(val);
+            const el = document.getElementById('lbl-press-a');
+            if (el) el.innerText = `${val} hPa`;
+            drawSimCanvas();
+        }
+
+        function updatePressB(val) {
+            simState.pressB = parseFloat(val);
+            const el = document.getElementById('lbl-press-b');
+            if (el) el.innerText = `${val} hPa`;
+            drawSimCanvas();
+        }
+
+        function updateLevel5TempA(val) {
+            simState.tempLeft = parseFloat(val);
+            const el = document.getElementById('lbl-l5-tempA');
+            if (el) el.innerText = `${val} °C`;
+            drawSimCanvas();
+        }
+
+        function updateLevel5TempB(val) {
+            simState.tempRight = parseFloat(val);
+            const el = document.getElementById('lbl-l5-tempB');
+            if (el) el.innerText = `${val} °C`;
+            drawSimCanvas();
+        }
+
+        function resetSimulationStateForLevel(levelId) {
+            simState.running = false;
+            simState.equipmentPlaced = [];
+            simState.fanSpeed = 1;
+            simState.tempLeft = 40;
+            simState.tempRight = 10;
+            simState.pressA = 1020;
+            simState.pressB = 980;
+            simState.timeOfDay = 'day';
+            simState.challengeScenario = 1;
+            simState.userPrediction = null;
+
+            updateSimButtonUI(false);
+        }
+
+        /* ==========================================================================
+           CANVAS SIMULATION RENDER ENGINE (2D GRAPHICS & PARTICLES)
+           ========================================================================== */
+        let canvas, ctx;
+        let particles = [];
+        let animAngle = 0;
+
+        function initCanvas() {
+            canvas = document.getElementById('simCanvas');
+            ctx = canvas.getContext('2d');
+            handleCanvasResize();
+            initParticles();
+        }
+
+        function handleCanvasResize() {
+            if (!canvas) return;
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            drawSimCanvas();
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < 40; i++) {
+                particles.push({
+                    x: Math.random() * 600,
+                    y: Math.random() * 300,
+                    speed: 1 + Math.random() * 2,
+                    radius: 3 + Math.random() * 3
+                });
+            }
+        }
+
+        function toggleSimulation() {
+            playClickSound();
+            simState.running = !simState.running;
+            updateSimButtonUI(simState.running);
+
+            if (simState.running) {
+                startWindSound();
+                animateSim();
+            } else {
+                stopWindSound();
+                if (simState.animationFrame) cancelAnimationFrame(simState.animationFrame);
+            }
+        }
+
+        function animateSim() {
+            if (!simState.running) return;
+
+            animAngle += 0.05;
+            drawSimCanvas();
+
+            simState.animationFrame = requestAnimationFrame(animateSim);
+        }
+
+        function resetSimulation() {
+            playClickSound();
+            simState.running = false;
+            stopWindSound();
+            if (simState.animationFrame) cancelAnimationFrame(simState.animationFrame);
+            updateSimButtonUI(false);
+            initParticles();
+            drawSimCanvas();
+        }
+
+        function updateSimButtonUI(isRunning) {
+            const btnText = document.getElementById('text-sim-start');
+            const btnIcon = document.getElementById('icon-sim-start');
+            const badge = document.getElementById('status-badge');
+
+            if (isRunning) {
+                if (btnText) btnText.innerText = 'หยุดทดลอง';
+                if (btnIcon) btnIcon.className = 'fa-solid fa-pause';
+                if (badge) {
+                    badge.innerText = 'สถานะ: กำลังจำลองการทดลอง';
+                    badge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300';
+                }
+            } else {
+                if (btnText) btnText.innerText = 'เริ่มทดลอง';
+                if (btnIcon) btnIcon.className = 'fa-solid fa-play';
+                if (badge) {
+                    badge.innerText = 'สถานะ: พร้อมทดลอง';
+                    badge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700';
+                }
+            }
+        }
+
+        function drawSimCanvas() {
+            if (!ctx || !canvas) return;
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Clear Background to Light Theme Canvas Background
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = "#f1f5f9"; // slate-100
+            ctx.fillRect(0, 0, w, h);
+
+            const level = gameState.currentLevel;
+
+            if (level === 1) {
+                drawLevel1Sim(w, h);
+            } else if (level === 2) {
+                drawLevel2Sim(w, h);
+            } else if (level === 3) {
+                drawLevel3Sim(w, h);
+            } else if (level === 4) {
+                drawLevel4Sim(w, h);
+            } else if (level === 5) {
+                drawLevel5Sim(w, h);
+            }
+        }
+
+        /* --- Level 1 Graphic Simulation --- */
+        function drawLevel1Sim(w, h) {
+            // Lab background table
+            ctx.fillStyle = "#cbd5e1";
+            ctx.fillRect(0, h - 40, w, 40);
+
+            // Fan (Left)
+            const fanX = 70, fanY = h - 110;
+            ctx.fillStyle = "#64748b";
+            ctx.fillRect(fanX - 10, fanY, 20, 70); // Stand
+            ctx.beginPath();
+            ctx.arc(fanX, fanY, 35, 0, Math.PI * 2);
+            ctx.fillStyle = "#0284c7";
+            ctx.fill();
+
+            // Rotating Blades
+            ctx.save();
+            ctx.translate(fanX, fanY);
+            if (simState.running) {
+                ctx.rotate(animAngle * simState.fanSpeed * 3);
+            }
+            for (let i = 0; i < 3; i++) {
+                ctx.rotate((Math.PI * 2) / 3);
+                ctx.fillStyle = "#e0f2fe";
+                ctx.beginPath();
+                ctx.ellipse(0, 18, 8, 18, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // Windmill (Right)
+            const wmX = w - 100, wmY = h - 130;
+            ctx.fillStyle = "#475569";
+            ctx.fillRect(wmX - 4, wmY, 8, 90);
+            ctx.save();
+            ctx.translate(wmX, wmY);
+            if (simState.running) {
+                ctx.rotate(animAngle * simState.fanSpeed * 2);
+            }
+            for (let i = 0; i < 4; i++) {
+                ctx.rotate(Math.PI / 2);
+                ctx.fillStyle = "#f59e0b";
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(15, -35);
+                ctx.lineTo(-15, -35);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // Ribbons in Center
+            const rbX = 220, rbY = h - 120;
+            ctx.fillStyle = "#64748b";
+            ctx.fillRect(rbX, rbY, 6, 80);
+
+            const windOffset = simState.running ? Math.sin(animAngle * 5) * (simState.fanSpeed * 8) : 0;
+            ctx.strokeStyle = "#ef4444";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(rbX + 6, rbY + 10);
+            ctx.quadraticCurveTo(rbX + 40, rbY + 10 + windOffset, rbX + 70 + (simState.running ? simState.fanSpeed * 15 : 0), rbY + 15 + windOffset);
+            ctx.stroke();
+
+            // Airflow Arrows (Moving Particles)
+            if (simState.running) {
+                particles.forEach(p => {
+                    p.x += simState.fanSpeed * 3;
+                    if (p.x > w - 80) p.x = 110;
+
+                    ctx.fillStyle = "rgba(2, 132, 199, 0.8)";
+                    ctx.beginPath();
+                    ctx.arc(p.x, 80 + (p.y % 120), 3, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        }
+
+        /* --- Level 2 Graphic Simulation --- */
+        function drawLevel2Sim(w, h) {
+            const midX = w / 2;
+            const topBoundary = 80;
+            const bottomBoundary = h - 80;
+            const leftBoundary = 60;
+            const rightBoundary = w - 60;
+
+            // Chambers Background Gradient/Fills
+            ctx.fillStyle = "rgba(239, 68, 68, 0.12)";
+            ctx.fillRect(20, 20, midX - 30, h - 70);
+
+            ctx.fillStyle = "rgba(59, 130, 246, 0.12)";
+            ctx.fillRect(midX + 10, 20, midX - 30, h - 70);
+
+            // Container Borders
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(20, 20, w - 40, h - 70);
+
+            // Base ground / Equipment Stands
+            ctx.fillStyle = "#1e293b";
+            ctx.fillRect(10, h - 50, w - 20, 40);
+
+            // Left Heater Visual Device
+            ctx.fillStyle = "#ef4444";
+            ctx.beginPath();
+            ctx.arc(80, h - 55, 20, Math.PI, 0);
+            ctx.fill();
+            ctx.fillStyle = "#f59e0b";
+            ctx.beginPath();
+            ctx.arc(80, h - 55, 12, Math.PI, 0);
+            ctx.fill();
+
+            // Right Cooler Visual Device
+            ctx.fillStyle = "#3b82f6";
+            ctx.fillRect(w - 110, h - 65, 60, 15);
+            ctx.fillStyle = "#93c5fd";
+            ctx.fillRect(w - 100, h - 50, 40, 10);
+
+            // Temperature Labels & Thermometer Icons
+            ctx.fillStyle = "#fca5a5";
+            ctx.font = "bold 14px Prompt";
+            ctx.fillText(`🔥 ฝั่งอุ่น (${simState.tempLeft}°C)`, 35, 45);
+
+            ctx.fillStyle = "#93c5fd";
+            ctx.fillText(`❄️ ฝั่งเย็น (${simState.tempRight}°C)`, midX + 25, 45);
+
+            // Density Indicator Text
+            ctx.font = "11px Prompt";
+            ctx.fillStyle = "#f87171";
+            ctx.fillText("ความหนาแน่นต่ำ (เบา ➔ ลอยขึ้น)", 35, 65);
+
+            ctx.fillStyle = "#60a5fa";
+            ctx.fillText("ความหนาแน่นสูง (หนัก ➔ จมลง)", midX + 25, 65);
+
+            // Convection Current Circulation Physics (Aligned precisely with vector arrows)
+            const tempDiff = Math.max(5, simState.tempLeft - simState.tempRight);
+            const moveSpeed = (tempDiff / 10) + 1; // Speed factor based on delta T
+
+            particles.forEach((p) => {
+                if (simState.running) {
+                    // 1. Left Track (Rising Hot Air): Move UP along left arrow
+                    if (p.x <= leftBoundary + 40 && p.y > topBoundary) {
+                        p.y -= moveSpeed * 1.2;
+                        if (p.y <= topBoundary) p.y = topBoundary;
+                    } 
+                    // 2. Top Track (Upper Air Drift): Move RIGHT along top arrow
+                    else if (p.y <= topBoundary + 20 && p.x < rightBoundary) {
+                        p.x += moveSpeed * 1.5;
+                        if (p.x >= rightBoundary) p.x = rightBoundary;
+                    } 
+                    // 3. Right Track (Sinking Cold Air): Move DOWN along right arrow
+                    else if (p.x >= rightBoundary - 40 && p.y < bottomBoundary) {
+                        p.y += moveSpeed * 1.2;
+                        if (p.y >= bottomBoundary) p.y = bottomBoundary;
+                    } 
+                    // 4. Bottom Track (Surface Cold Wind): Move LEFT along bottom arrow
+                    else if (p.y >= bottomBoundary - 20 && p.x > leftBoundary) {
+                        p.x -= moveSpeed * 1.5;
+                        if (p.x <= leftBoundary) p.x = leftBoundary;
+                    }
+                    // Corner Transition Fail-safe
+                    else {
+                        if (p.x < midX && p.y > midX) p.x -= moveSpeed;
+                        else if (p.x < midX && p.y <= midX) p.y -= moveSpeed;
+                        else if (p.x >= midX && p.y <= midX) p.x += moveSpeed;
+                        else p.y += moveSpeed;
+                    }
+                }
+
+                // Smoothly color particles based on position (Red on Left, Blue on Right)
+                const ratio = Math.max(0, Math.min(1, (p.x - leftBoundary) / (rightBoundary - leftBoundary)));
+                const r = Math.round(248 * (1 - ratio) + 96 * ratio);
+                const g = Math.round(113 * (1 - ratio) + 165 * ratio);
+                const b = Math.round(113 * (1 - ratio) + 250 * ratio);
+
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.85)`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Flow Direction Vector Arrows (Continuous Convection Cell)
+            if (simState.running) {
+                // 1. Left Vertical Arrow: Hot Air Rising
+                drawArrow(ctx, 60, bottomBoundary - 20, 60, topBoundary + 20, "#ef4444", 4);
+                // 2. Top Horizontal Arrow: Upper Air Moving Right
+                drawArrow(ctx, midX - 70, topBoundary - 5, midX + 70, topBoundary - 5, "#fca5a5", 4);
+                // 3. Right Vertical Arrow: Cold Air Sinking
+                drawArrow(ctx, w - 60, topBoundary + 20, w - 60, bottomBoundary - 20, "#3b82f6", 4);
+                // 4. Bottom Horizontal Arrow: Surface Cold Air Replacing Left
+                drawArrow(ctx, midX + 70, bottomBoundary + 5, midX - 70, bottomBoundary + 5, "#93c5fd", 4);
+            }
+        }
+
+        /* --- Level 3 Graphic Simulation --- */
+        function drawLevel3Sim(w, h) {
+            const pA = simState.pressA;
+            const pB = simState.pressB;
+
+            // Chamber Boundaries & Midpoint
+            const midX = w / 2;
+            const leftBoundary = 60;
+            const rightBoundary = w - 60;
+            const surfaceY = h - 60;
+            const upperY = 70;
+
+            // Area A and Area B Background Boxes
+            ctx.fillStyle = pA >= pB ? "rgba(56, 189, 248, 0.08)" : "rgba(248, 113, 113, 0.08)";
+            ctx.fillRect(25, 25, midX - 35, h - 50);
+
+            ctx.fillStyle = pB >= pA ? "rgba(56, 189, 248, 0.08)" : "rgba(248, 113, 113, 0.08)";
+            ctx.fillRect(midX + 10, 25, midX - 35, h - 50);
+
+            // Area Container Borders
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(25, 25, midX - 35, h - 50);
+            ctx.strokeRect(midX + 10, 25, midX - 35, h - 50);
+
+            // Badges H / L
+            const typeA = pA >= pB ? 'H' : 'L';
+            const typeB = pB >= pA ? 'H' : 'L';
+
+            ctx.font = "bold 24px Prompt";
+            ctx.fillStyle = typeA === 'H' ? '#0284c7' : '#dc2626';
+            ctx.fillText(`พื้นที่ A (${typeA})`, 45, 60);
+            ctx.font = "12px Prompt";
+            ctx.fillStyle = "#64748b";
+            ctx.fillText(`ความกดอากาศ: ${pA} hPa`, 45, 80);
+
+            ctx.font = "bold 24px Prompt";
+            ctx.fillStyle = typeB === 'H' ? '#0284c7' : '#dc2626';
+            ctx.fillText(`พื้นที่ B (${typeB})`, midX + 30, 60);
+            ctx.font = "12px Prompt";
+            ctx.fillStyle = "#64748b";
+            ctx.fillText(`ความกดอากาศ: ${pB} hPa`, midX + 30, 80);
+
+            // Physics calculation: Pressure Difference (Delta P)
+            const diff = Math.abs(pA - pB);
+            const expBox = document.getElementById('lab-explanation');
+
+            if (diff === 0) {
+                if (expBox) expBox.innerText = "ความกดอากาศของพื้นที่ A และ B เท่ากันพอดี ไม่มีความแตกต่างของความกดอากาศ อากาศจึงหยุดนิ่งและไม่เกิดลม (ลมสงบ)";
+            } else {
+                const fromAtoB = pA > pB; // True if A is H and B is L
+                const speed = Math.min(7, Math.max(1.2, diff / 7)); // Dynamic speed based on Delta P
+
+                if (expBox) {
+                    if (fromAtoB) {
+                        expBox.innerText = `พื้นที่ A มีความกดอากาศสูงกว่า (${pA} hPa) ลมบริเวณผิวพื้นจึงพัดจาก พื้นที่ A (H) ➔ พื้นที่ B (L) ด้วยแรงดันความกดอากาศ`;
+                    } else {
+                        expBox.innerText = `พื้นที่ B มีความกดอากาศสูงกว่า (${pB} hPa) ลมบริเวณผิวพื้นจึงพัดจาก พื้นที่ B (H) ➔ พื้นที่ A (L) ด้วยแรงดันความกดอากาศ`;
+                    }
+                }
+
+                if (simState.running) {
+                    particles.forEach(p => {
+                        if (fromAtoB) {
+                            // Surface Wind: Move Right from A (H) -> B (L)
+                            if (p.y >= surfaceY - 30 && p.x < rightBoundary) {
+                                p.x += speed * 1.6;
+                                if (p.x >= rightBoundary) p.x = rightBoundary;
+                            }
+                            // Low Pressure Zone (B): Air Rises UP
+                            else if (p.x >= rightBoundary - 30 && p.y > upperY) {
+                                p.y -= speed * 1.2;
+                                if (p.y <= upperY) p.y = upperY;
+                            }
+                            // Upper Atmosphere: Move Left from B -> A
+                            else if (p.y <= upperY + 30 && p.x > leftBoundary) {
+                                p.x -= speed * 1.6;
+                                if (p.x <= leftBoundary) p.x = leftBoundary;
+                            }
+                            // High Pressure Zone (A): Air Sinks DOWN
+                            else if (p.x <= leftBoundary + 30 && p.y < surfaceY) {
+                                p.y += speed * 1.2;
+                                if (p.y >= surfaceY) p.y = surfaceY;
+                            }
+                            // Edge case repositioning
+                            else {
+                                if (p.x < midX) p.y += speed;
+                                else p.y -= speed;
+                            }
+                        } else {
+                            // Surface Wind: Move Left from B (H) -> A (L)
+                            if (p.y >= surfaceY - 30 && p.x > leftBoundary) {
+                                p.x -= speed * 1.6;
+                                if (p.x <= leftBoundary) p.x = leftBoundary;
+                            }
+                            // Low Pressure Zone (A): Air Rises UP
+                            else if (p.x <= leftBoundary + 30 && p.y > upperY) {
+                                p.y -= speed * 1.2;
+                                if (p.y <= upperY) p.y = upperY;
+                            }
+                            // Upper Atmosphere: Move Right from A -> B
+                            else if (p.y <= upperY + 30 && p.x < rightBoundary) {
+                                p.x += speed * 1.6;
+                                if (p.x >= rightBoundary) p.x = rightBoundary;
+                            }
+                            // High Pressure Zone (B): Air Sinks DOWN
+                            else if (p.x >= rightBoundary - 30 && p.y < surfaceY) {
+                                p.y += speed * 1.2;
+                                if (p.y >= surfaceY) p.y = surfaceY;
+                            }
+                            // Edge case repositioning
+                            else {
+                                if (p.x > midX) p.y += speed;
+                                else p.y -= speed;
+                            }
+                        }
+
+                        // Particle Color & Glow
+                        ctx.fillStyle = fromAtoB ? "rgba(2, 132, 199, 0.85)" : "rgba(14, 165, 233, 0.85)";
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+
+                    // Main Dynamic Vector Arrows
+                    if (fromAtoB) {
+                        // Surface Wind: High (A) -> Low (B)
+                        drawArrow(ctx, leftBoundary + 40, surfaceY, rightBoundary - 40, surfaceY, "#0284c7", 6);
+                        // Vertical Rise at B (L)
+                        drawArrow(ctx, rightBoundary, surfaceY - 20, rightBoundary, upperY + 20, "#dc2626", 3);
+                        // Upper Atmosphere Return: B -> A
+                        drawArrow(ctx, rightBoundary - 40, upperY, leftBoundary + 40, upperY, "#94a3b8", 3);
+                        // Vertical Sink at A (H)
+                        drawArrow(ctx, leftBoundary, upperY + 20, leftBoundary, surfaceY - 20, "#0284c7", 3);
+                    } else {
+                        // Surface Wind: High (B) -> Low (A)
+                        drawArrow(ctx, rightBoundary - 40, surfaceY, leftBoundary + 40, surfaceY, "#0284c7", 6);
+                        // Vertical Rise at A (L)
+                        drawArrow(ctx, leftBoundary, surfaceY - 20, leftBoundary, upperY + 20, "#dc2626", 3);
+                        // Upper Atmosphere Return: A -> B
+                        drawArrow(ctx, leftBoundary + 40, upperY, rightBoundary - 40, upperY, "#94a3b8", 3);
+                        // Vertical Sink at B (H)
+                        drawArrow(ctx, rightBoundary, upperY + 20, rightBoundary, surfaceY - 20, "#0284c7", 3);
+                    }
+                }
+            }
+        }
+
+        /* --- Level 4 Graphic Simulation (Sea & Land Breeze) --- */
+        function drawLevel4Sim(w, h) {
+            const isDay = simState.timeOfDay === 'day';
+
+            // Sky Background
+            ctx.fillStyle = isDay ? "#0284c7" : "#0f172a";
+            ctx.fillRect(0, 0, w, h - 80);
+
+            // Sun or Moon
+            ctx.font = "30px FontAwesome";
+            ctx.fillStyle = isDay ? "#f59e0b" : "#e2e8f0";
+            ctx.fillText(isDay ? "☀️" : "🌙", isDay ? 60 : w - 80, 50);
+
+            // Ground (Left) and Sea (Right)
+            ctx.fillStyle = isDay ? "#b45309" : "#451a03"; // Land
+            ctx.fillRect(0, h - 80, w / 2, 80);
+
+            ctx.fillStyle = "#1d4ed8"; // Sea
+            ctx.fillRect(w / 2, h - 80, w / 2, 80);
+
+            // Flag on Land (Reacts to Wind)
+            const flagX = 80, flagY = h - 140;
+            ctx.fillStyle = "#475569";
+            ctx.fillRect(flagX - 2, flagY, 4, 60); // Flag pole
+
+            ctx.fillStyle = isDay ? "#ef4444" : "#3b82f6";
+            ctx.beginPath();
+            ctx.moveTo(flagX, flagY);
+            if (simState.running) {
+                const flagWave = Math.sin(animAngle * 8) * 5;
+                if (isDay) {
+                    // Wind from sea to land (points left)
+                    ctx.lineTo(flagX - 35, flagY + 10 + flagWave);
+                    ctx.lineTo(flagX, flagY + 25);
+                } else {
+                    // Wind from land to sea (points right)
+                    ctx.lineTo(flagX + 35, flagY + 10 + flagWave);
+                    ctx.lineTo(flagX, flagY + 25);
+                }
+            } else {
+                ctx.lineTo(flagX + (isDay ? -25 : 25), flagY + 15);
+                ctx.lineTo(flagX, flagY + 25);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // Sailboat on Sea (Reacts to Wind)
+            let boatX = w / 2 + 100;
+            if (simState.running) {
+                boatX += isDay ? Math.sin(animAngle * 2) * 15 - 20 : Math.sin(animAngle * 2) * 15 + 20;
+            }
+            const boatY = h - 90;
+            // Hull
+            ctx.fillStyle = "#78350f";
+            ctx.beginPath();
+            ctx.moveTo(boatX - 20, boatY);
+            ctx.lineTo(boatX + 20, boatY);
+            ctx.lineTo(boatX + 12, boatY + 12);
+            ctx.lineTo(boatX - 12, boatY + 12);
+            ctx.closePath();
+            ctx.fill();
+            // Mast & Sail
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.moveTo(boatX, boatY);
+            ctx.lineTo(boatX, boatY - 30);
+            ctx.lineTo(isDay ? boatX - 18 : boatX + 18, boatY - 10);
+            ctx.closePath();
+            ctx.fill();
+
+            // Sea Waves Animation (Reacting to Wind direction)
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.lineWidth = 2;
+            const waveOffset = simState.running ? (isDay ? -animAngle * 20 : animAngle * 20) % 40 : 0;
+            for (let wx = w / 2 + 10; wx < w - 20; wx += 50) {
+                const drawWx = wx + waveOffset;
+                if (drawWx > w / 2 && drawWx < w - 10) {
+                    ctx.beginPath();
+                    ctx.arc(drawWx, h - 50, 10, Math.PI, 0, true);
+                    ctx.stroke();
+                }
+            }
+
+            // Text Labels
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 14px Prompt";
+            ctx.fillText("พื้นดิน (Land)", 30, h - 35);
+            ctx.fillText("พื้นน้ำ (Sea)", w / 2 + 40, h - 35);
+
+            if (simState.running) {
+                // Moving Particle Airflow
+                particles.forEach(p => {
+                    if (isDay) {
+                        // Sea Breeze Loop: Right to Left at surface, Up over land, Left to Right high, Down over sea
+                        if (p.y > h - 130 && p.x > 80) p.x -= 2.5; // Surface (Sea -> Land)
+                        else if (p.x <= 100 && p.y > 60) p.y -= 2; // Rise over Land
+                        else if (p.y <= 70 && p.x < w - 80) p.x += 2.5; // High (Land -> Sea)
+                        else if (p.x >= w - 100 && p.y < h - 120) p.y += 2; // Sink over Sea
+                    } else {
+                        // Land Breeze Loop: Left to Right at surface, Up over sea, Right to Left high, Down over land
+                        if (p.y > h - 130 && p.x < w - 80) p.x += 2.5; // Surface (Land -> Sea)
+                        else if (p.x >= w - 100 && p.y > 60) p.y -= 2; // Rise over Sea
+                        else if (p.y <= 70 && p.x > 80) p.x -= 2.5; // High (Sea -> Land)
+                        else if (p.x <= 100 && p.y < h - 120) p.y += 2; // Sink over Land
+                    }
+
+                    ctx.fillStyle = isDay ? "rgba(56, 189, 248, 0.75)" : "rgba(148, 163, 184, 0.75)";
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                if (isDay) {
+                    // Sea Breeze: Land hot -> air rises. Sea cool -> wind blows from Sea to Land at surface
+                    drawArrow(ctx, w - 80, h - 110, 80, h - 110, "#38bdf8", 5); // Surface wind: Sea -> Land
+                    drawArrow(ctx, 80, h - 140, 80, 70, "#f87171", 4); // Rise over land
+                    drawArrow(ctx, 80, 60, w - 80, 60, "#94a3b8", 3); // High altitude return
+                    ctx.fillStyle = "#fef08a";
+                    ctx.fillText("ลมทะเล (Sea Breeze)", w / 2 - 60, h - 130);
+                } else {
+                    // Land Breeze: Sea warmer -> air rises. Land cold -> wind blows from Land to Sea at surface
+                    drawArrow(ctx, 80, h - 110, w - 80, h - 110, "#38bdf8", 5); // Surface wind: Land -> Sea
+                    drawArrow(ctx, w - 80, h - 140, w - 80, 70, "#f87171", 4); // Rise over sea
+                    drawArrow(ctx, w - 80, 60, 80, 60, "#94a3b8", 3); // High altitude return
+                    ctx.fillStyle = "#cbd5e1";
+                    ctx.fillText("ลมบก (Land Breeze)", w / 2 - 60, h - 130);
+                }
+            }
+        }
+
+        /* --- Level 5 Graphic Simulation (Challenge) --- */
+        function drawLevel5Sim(w, h) {
+            const tempA = simState.tempLeft;
+            const tempB = simState.tempRight;
+
+            // Pressure calculation: Higher temp = Lower pressure (L), Lower temp = Higher pressure (H)
+            const pressA = Math.round(1013 - (tempA - 25) * 1.5);
+            const pressB = Math.round(1013 - (tempB - 25) * 1.5);
+            const typeA = pressA >= pressB ? 'H' : 'L';
+            const typeB = pressB > pressA ? 'H' : 'L';
+
+            // Area Containers Background
+            ctx.fillStyle = tempA > 25 ? "rgba(239, 68, 68, 0.08)" : "rgba(59, 130, 246, 0.08)";
+            ctx.fillRect(20, 20, w / 2 - 30, h - 70);
+
+            ctx.fillStyle = tempB > 25 ? "rgba(239, 68, 68, 0.08)" : "rgba(59, 130, 246, 0.08)";
+            ctx.fillRect(w / 2 + 10, 20, w / 2 - 30, h - 70);
+
+            // Container Borders
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(20, 20, w / 2 - 30, h - 70);
+            ctx.strokeRect(w / 2 + 10, 20, w / 2 - 30, h - 70);
+
+            // Badges H / L
+            ctx.font = "bold 20px Prompt";
+            ctx.fillStyle = typeA === 'H' ? '#0284c7' : '#dc2626';
+            ctx.fillText(`บริเวณ A (${typeA})`, 35, 55);
+            ctx.font = "12px Prompt";
+            ctx.fillStyle = "#64748b";
+            ctx.fillText(`อุณหภูมิ: ${tempA}°C | ความกดอากาศ: ${pressA} hPa`, 35, 75);
+
+            ctx.font = "bold 20px Prompt";
+            ctx.fillStyle = typeB === 'H' ? '#0284c7' : '#dc2626';
+            ctx.fillText(`บริเวณ B (${typeB})`, w / 2 + 25, 55);
+            ctx.font = "12px Prompt";
+            ctx.fillStyle = "#64748b";
+            ctx.fillText(`อุณหภูมิ: ${tempB}°C | ความกดอากาศ: ${pressB} hPa`, w / 2 + 25, 75);
+
+            // Wind Direction & Flow Particles (Surface wind blows from High to Low Pressure)
+            const diff = Math.abs(pressA - pressB);
+            const expBox = document.getElementById('lab-explanation');
+
+            if (diff === 0) {
+                if (expBox) expBox.innerText = "อุณหภูมิและความกดอากาศของทั้งสองบริเวณเท่ากัน ไม่เกิดการเคลื่อนที่ของลม (ลมสงบ)";
+            } else {
+                const fromAtoB = pressA > pressB; // True if A is H and B is L
+                const speed = Math.max(1, diff / 5);
+
+                if (expBox) {
+                    if (fromAtoB) {
+                        expBox.innerText = `บริเวณ A มีความกดอากาศสูงกว่า (${pressA} hPa) ลมบริเวณผิวพื้นจึงพัดจาก บริเวณ A ➔ บริเวณ B (${pressB} hPa)`;
+                    } else {
+                        expBox.innerText = `บริเวณ B มีความกดอากาศสูงกว่า (${pressB} hPa) ลมบริเวณผิวพื้นจึงพัดจาก บริเวณ B ➔ บริเวณ A (${pressA} hPa)`;
+                    }
+                }
+
+                if (simState.running) {
+                    particles.forEach(p => {
+                        if (fromAtoB) {
+                            p.x += speed * 1.5;
+                            if (p.x > w - 50) p.x = 40;
+                        } else {
+                            p.x -= speed * 1.5;
+                            if (p.x < 40) p.x = w - 50;
+                        }
+
+                        ctx.fillStyle = "rgba(2, 132, 199, 0.8)";
+                        ctx.beginPath();
+                        ctx.arc(p.x, h - 80 + (p.y % 30), 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+
+                    // Main Vector Arrow
+                    if (fromAtoB) {
+                        drawArrow(ctx, 60, h - 60, w - 60, h - 60, "#0284c7", 5);
+                    } else {
+                        drawArrow(ctx, w - 60, h - 60, 60, h - 60, "#0284c7", 5);
+                    }
+                }
+            }
+        }
+
+        /* Helper to draw vector arrows */
+        function drawArrow(context, fromx, fromy, tox, toy, color = "#38bdf8", width = 3) {
+            const headlen = 12;
+            const dx = tox - fromx;
+            const dy = toy - fromy;
+            const angle = Math.atan2(dy, dx);
+
+            context.strokeStyle = color;
+            context.lineWidth = width;
+            context.beginPath();
+            context.moveTo(fromx, fromy);
+            context.lineTo(tox, toy);
+            context.stroke();
+
+            context.fillStyle = color;
+            context.beginPath();
+            context.moveTo(tox, toy);
+            context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            context.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            context.closePath();
+            context.fill();
+        }
+
+        /* ==========================================================================
+           QUIZ ENGINE & ASSESSMENT SYSTEM
+           ========================================================================== */
+        function finishExperimentAndStartQuiz() {
+            simState.running = false;
+            stopWindSound(); // หยุดเสียงลมทันทีเมื่อเข้าสู่หน้าแบบทดสอบ
+            if (simState.animationFrame) cancelAnimationFrame(simState.animationFrame);
+
+            gameState.currentQuestionIdx = 0;
+            gameState.currentQuizAnswers = [];
+
+            showScreen('quiz');
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const lvlData = LEVELS_DATA[gameState.currentLevel - 1];
+            const qIdx = gameState.currentQuestionIdx;
+            const qData = lvlData.quizzes[qIdx];
+
+            // Progress Header UI
+            document.getElementById('quiz-level-name').innerText = `แบบทดสอบด่านที่ ${lvlData.id}: ${lvlData.title}`;
+            document.getElementById('quiz-progress-text').innerText = `ข้อ ${qIdx + 1} / ${lvlData.quizzes.length}`;
+            document.getElementById('quiz-progress-bar').style.width = `${((qIdx + 1) / lvlData.quizzes.length) * 100}%`;
+
+            // Question text
+            document.getElementById('quiz-question-text').innerText = qData.q;
+
+            // Options container
+            const container = document.getElementById('quiz-options-container');
+            container.innerHTML = '';
+
+            qData.options.forEach((opt, idx) => {
+                const optBtn = document.createElement('button');
+                optBtn.className = `w-full text-left p-4 rounded-xl border border-slate-200 bg-slate-50 hover:border-cyan-500 transition text-xs sm:text-sm text-slate-800 font-medium flex items-center justify-between select-none shadow-sm`;
+                optBtn.id = `quiz-opt-${idx}`;
+                optBtn.onclick = () => selectQuizOption(idx);
+
+                optBtn.innerHTML = `
+                    <span>${opt}</span>
+                    <i class="fa-regular fa-circle text-slate-400 text-base" id="quiz-radio-${idx}"></i>
+                `;
+                container.appendChild(optBtn);
+            });
+
+            // Hide Feedback and Reset Buttons
+            document.getElementById('quiz-feedback').classList.add('hidden');
+            document.getElementById('btn-quiz-submit').classList.remove('hidden');
+            document.getElementById('btn-quiz-next').classList.add('hidden');
+            gameState.selectedOptIdx = null;
+        }
+
+        function selectQuizOption(idx) {
+            playClickSound();
+            const qData = LEVELS_DATA[gameState.currentLevel - 1].quizzes[gameState.currentQuestionIdx];
+            qData.options.forEach((_, i) => {
+                const btn = document.getElementById(`quiz-opt-${i}`);
+                const radio = document.getElementById(`quiz-radio-${i}`);
+                if (i === idx) {
+                    btn.className = `w-full text-left p-4 rounded-xl border-2 border-cyan-500 bg-cyan-50 text-xs sm:text-sm text-cyan-900 font-bold flex items-center justify-between select-none shadow-sm`;
+                    radio.className = `fa-solid fa-circle-dot text-cyan-600 text-base`;
+                } else {
+                    btn.className = `w-full text-left p-4 rounded-xl border border-slate-200 bg-slate-50 text-xs sm:text-sm text-slate-800 font-medium flex items-center justify-between select-none shadow-sm`;
+                    radio.className = `fa-regular fa-circle text-slate-400 text-base`;
+                }
+            });
+            gameState.selectedOptIdx = idx;
+        }
+
+        function submitAnswer() {
+            if (gameState.selectedOptIdx === null || gameState.selectedOptIdx === undefined) {
+                alert("กรุณาคลิกเลือกคำตอบก่อนกด ยืนยันคำตอบ ครับ");
+                return;
+            }
+
+            const qData = LEVELS_DATA[gameState.currentLevel - 1].quizzes[gameState.currentQuestionIdx];
+            const isCorrect = gameState.selectedOptIdx === qData.ans;
+
+            if (isCorrect) {
+                playCorrectSound();
+            } else {
+                playWrongSound();
+            }
+
+            gameState.currentQuizAnswers.push(isCorrect);
+
+            // Display Feedback Box
+            const feedbackBox = document.getElementById('quiz-feedback');
+            const feedbackTitle = document.getElementById('feedback-title');
+            const feedbackDetail = document.getElementById('feedback-detail');
+
+            feedbackBox.classList.remove('hidden');
+            if (isCorrect) {
+                feedbackBox.className = "p-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-900 text-sm flex flex-col space-y-1";
+                feedbackTitle.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 text-lg"></i> <span>เก่งมาก! คำตอบถูกต้อง</span>`;
+            } else {
+                feedbackBox.className = "p-4 rounded-xl border border-rose-300 bg-rose-50 text-rose-900 text-sm flex flex-col space-y-1";
+                feedbackTitle.innerHTML = `<i class="fa-solid fa-circle-xmark text-rose-600 text-lg"></i> <span>ลองทบทวนอีกครั้ง</span>`;
+            }
+            feedbackDetail.innerText = qData.exp;
+
+            // Highlight Option Correctness
+            qData.options.forEach((_, i) => {
+                const btn = document.getElementById(`quiz-opt-${i}`);
+                btn.disabled = true;
+                if (i === qData.ans) {
+                    btn.className = `w-full text-left p-4 rounded-xl border-2 border-emerald-500 bg-emerald-100 text-xs sm:text-sm text-emerald-900 font-bold flex items-center justify-between shadow-sm`;
+                } else if (i === gameState.selectedOptIdx && !isCorrect) {
+                    btn.className = `w-full text-left p-4 rounded-xl border-2 border-rose-500 bg-rose-100 text-xs sm:text-sm text-rose-900 font-bold flex items-center justify-between shadow-sm`;
+                }
+            });
+
+            // Toggle Action Buttons
+            document.getElementById('btn-quiz-submit').classList.add('hidden');
+            document.getElementById('btn-quiz-next').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            playClickSound();
+            gameState.currentQuestionIdx++;
+            if (gameState.currentQuestionIdx < GAME_CONFIG.questionsPerLevel) {
+                renderQuestion();
+            } else {
+                finishQuizAndShowSummary();
+            }
+        }
+
+        /* ==========================================================================
+           SUMMARY & REWARD SYSTEM
+           ========================================================================== */
+        function finishQuizAndShowSummary() {
+            stopWindSound();
+            playVictorySound();
+            const correctCount = gameState.currentQuizAnswers.filter(a => a === true).length;
+            const levelScore = correctCount * GAME_CONFIG.pointsPerQuestion;
+            const maxLevelScore = LEVELS_DATA[gameState.currentLevel - 1].quizzes.length * GAME_CONFIG.pointsPerQuestion;
+
+            const lvlIdx = gameState.currentLevel - 1;
+            gameState.scores[lvlIdx] = Math.max(gameState.scores[lvlIdx], levelScore);
+
+            // Unlock next level if available
+            if (gameState.currentLevel < GAME_CONFIG.totalLevels) {
+                gameState.unlockedLevels[gameState.currentLevel] = true;
+            }
+
+            saveData();
+
+            // Populate Summary Screen Data
+            document.getElementById('summary-level-score').innerText = `${levelScore} / ${maxLevelScore}`;
+            document.getElementById('summary-total-score').innerText = `${gameState.totalScore} / 20`;
+            document.getElementById('summary-completed-tag').innerText = `🎉 ภารกิจด่านที่ ${gameState.currentLevel} สำเร็จเรียบร้อย!`;
+
+            // Check if all 5 levels have been completed/attempted
+            const allCompleted = gameState.unlockedLevels.length === 5 && gameState.scores.every(s => s > 0);
+            const breakdownBox = document.getElementById('all-levels-summary-box');
+            const headerTag = document.getElementById('summary-header-tag');
+
+            if (allCompleted || gameState.currentLevel === 5) {
+                breakdownBox.classList.remove('hidden');
+                headerTag.innerText = "🎉 พิชิตครบทุกด่าน! สรุปผลคะแนนรวมสุทธิ";
+                
+                const breakdownContainer = document.getElementById('level-scores-breakdown');
+                breakdownContainer.innerHTML = '';
+                gameState.scores.forEach((sc, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'bg-white p-2 rounded-xl border border-cyan-200';
+                    item.innerHTML = `
+                        <p class="text-[10px] text-slate-500 font-medium">ด่านที่ ${i+1}</p>
+                        <p class="font-bold text-cyan-700 mt-0.5">${sc}/4</p>
+                    `;
+                    breakdownContainer.appendChild(item);
+                });
+            } else {
+                breakdownBox.classList.add('hidden');
+                headerTag.innerText = "สรุปผลการเรียนรู้ประจำด่าน";
+            }
+
+            const badgeTitleEl = document.getElementById('summary-badge-title');
+            const badgeIconEl = document.getElementById('badge-icon');
+            const subtitleEl = document.getElementById('summary-subtitle');
+
+            // Configure Next Level Button Logic & Text
+            const btnNextLevel = document.getElementById('btn-summary-next-level');
+            const textNextLevel = document.getElementById('text-summary-next-level');
+
+            if (gameState.currentLevel < GAME_CONFIG.totalLevels) {
+                btnNextLevel.classList.remove('hidden');
+                textNextLevel.innerText = `ไปด่านต่อไป (ด่านที่ ${gameState.currentLevel + 1})`;
+            } else {
+                btnNextLevel.classList.add('hidden');
+            }
+
+            const score = gameState.totalScore;
+            if (score >= 18) {
+                badgeTitleEl.innerText = "นักวิทยาศาสตร์พิชิตสายลม";
+                badgeIconEl.className = "fa-solid fa-crown text-amber-300";
+                subtitleEl.innerText = "ยอดเยี่ยมที่สุด! คุณมีความเข้าใจเรื่องการเกิดลมในระดับผู้เชี่ยวชาญ";
+            } else if (score >= 15) {
+                badgeTitleEl.innerText = "นักวิทยาศาสตร์ตัวน้อย";
+                badgeIconEl.className = "fa-solid fa-award text-yellow-300";
+                subtitleEl.innerText = "เก่งมาก! คุณผ่านภารกิจทดลองและทำคะแนนได้ดีเยี่ยม";
+            } else if (score >= 10) {
+                badgeTitleEl.innerText = "นักทดลองรุ่นเยาว์";
+                badgeIconEl.className = "fa-solid fa-medal text-cyan-300";
+                subtitleEl.innerText = "พยายามได้ดี! เรียนรู้พื้นฐานการเกิดลมได้อย่างครบถ้วน";
+            } else {
+                badgeTitleEl.innerText = "นักสำรวจฝึกหัด";
+                badgeIconEl.className = "fa-solid fa-compass text-slate-300";
+                subtitleEl.innerText = "ทบทวนบทเรียนเพิ่มเติมเพื่อสะสมคะแนนเพิ่มขึ้นนะครับ";
+            }
+
+            showScreen('summary');
+        }
+
+        function goToNextLevel() {
+            if (gameState.currentLevel < GAME_CONFIG.totalLevels) {
+                startLevel(gameState.currentLevel + 1);
+            } else {
+                showScreen('level-select');
+            }
+        }
+
+        function retryCurrentLevel() {
+            startLevel(gameState.currentLevel);
+        }
+
+        /* ==========================================================================
+           MODALS CONTROLLER
+           ========================================================================== */
+        function openKnowledgeModal() {
+            document.getElementById('modal-knowledge').classList.remove('hidden');
+        }
+
+        function closeKnowledgeModal() {
+            document.getElementById('modal-knowledge').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
